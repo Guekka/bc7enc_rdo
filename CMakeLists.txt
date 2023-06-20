@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.9)
 
 project(bc7enc VERSION 1.0.0 LANGUAGES CXX)
 
@@ -24,20 +24,6 @@ if (BUILD_X64)
 else()
 	message("Building 32-bit")
 endif(BUILD_X64)
-
-if (NOT MSVC)
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fopenmp")
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fopenmp")
-
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
-	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
-else()
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /openmp /W4")
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /openmp /W4")
-
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /openmp /W4")
-	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /openmp /W4")
-endif()
 
 if (SUPPORT_BC7E)
 	if (NOT MSVC)
@@ -106,8 +92,9 @@ else()
 	endif()
 endif()
 
-if (NOT MSVC)
-	target_link_libraries(${PROJECT_NAME} m)
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+	target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
 target_include_directories(
