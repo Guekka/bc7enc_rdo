@@ -1,6 +1,11 @@
-project(bc7enc)
+cmake_minimum_required(VERSION 3.0)
 
-cmake_minimum_required(VERSION 2.8)
+project(bc7enc VERSION 1.0.0 LANGUAGES CXX)
+
+set(ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(INCLUDE_DIR "${ROOT_DIR}/include")
+set(SOURCE_DIR "${ROOT_DIR}/src")
+
 option(BUILD_X64 "build 64-bit" TRUE)
 option(SUPPORT_BC7E "support BC7E (requires ispc)" FALSE)
 
@@ -67,42 +72,74 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE  "${CMAKE_CXX_FLAGS_RELEASE} ${GCC_COMPILE_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COMPILE_FLAGS} -D_DEBUG")
 
-set (BC7ENC_SRC_LIST ${COMMON_SRC_LIST}
-	bc7enc.cpp
-	bc7enc.h
-	bc7decomp.cpp
-	bc7decomp_ref.cpp
-	bc7decomp.h
-	lodepng.cpp	
-	lodepng.h
-	test.cpp
-	rgbcx.cpp
-	rgbcx.h
-	rgbcx_table4.h
-	rgbcx_table4_small.h
-	utils.cpp
-	utils.h
-	miniz.h
-	dds_defs.h
-	ert.cpp
-	ert.h
-	rdo_bc_encoder.cpp
-	rdo_bc_encoder.h
-	bc7e.ispc
+set (HEADER_FILES
+	${INCLUDE_DIR}/bc7enc/bc7decomp.h
+	${INCLUDE_DIR}/bc7enc/bc7enc.h
+	${INCLUDE_DIR}/bc7enc/dds_defs.h
+	${INCLUDE_DIR}/bc7enc/ert.h
+	${INCLUDE_DIR}/bc7enc/lodepng.h
+	${INCLUDE_DIR}/bc7enc/miniz.h
+	${INCLUDE_DIR}/bc7enc/rdo_bc_encoder.h
+	${INCLUDE_DIR}/bc7enc/rgbcx.h
+	${INCLUDE_DIR}/bc7enc/rgbcx_table4.h
+	${INCLUDE_DIR}/bc7enc/rgbcx_table4_small.h
+	${INCLUDE_DIR}/bc7enc/utils.h)
+
+set (SOURCE_FILES
+	${SOURCE_DIR}/bc7enc.cpp
+	${SOURCE_DIR}/bc7decomp.cpp
+	${SOURCE_DIR}/bc7decomp_ref.cpp
+	${SOURCE_DIR}/lodepng.cpp
+	${SOURCE_DIR}/rgbcx.cpp
+	${SOURCE_DIR}/utils.cpp
+	${SOURCE_DIR}/ert.cpp
+	${SOURCE_DIR}/rdo_bc_encoder.cpp
 	)
 
 if (NOT SUPPORT_BC7E)
-		add_executable(bc7enc ${BC7ENC_SRC_LIST})
+		add_library(${PROJECT_NAME} STATIC ${HEADER_FILES} ${SOURCE_FILES})
 else()
 	if (NOT MSVC)
-		add_executable(bc7enc ${BC7ENC_SRC_LIST} ${CMAKE_SOURCE_DIR}/bc7e.o ${CMAKE_SOURCE_DIR}/bc7e_avx.o ${CMAKE_SOURCE_DIR}/bc7e_avx2.o ${CMAKE_SOURCE_DIR}/bc7e_sse2.o ${CMAKE_SOURCE_DIR}/bc7e_sse4.o)
+		add_library(${PROJECT_NAME} STATIC ${HEADER_FILES} ${SOURCE_FILES} ${CMAKE_SOURCE_DIR}/bc7e.o ${CMAKE_SOURCE_DIR}/bc7e_avx.o ${CMAKE_SOURCE_DIR}/bc7e_avx2.o ${CMAKE_SOURCE_DIR}/bc7e_sse2.o ${CMAKE_SOURCE_DIR}/bc7e_sse4.o)
 	else()
-		add_executable(bc7enc ${BC7ENC_SRC_LIST} ${CMAKE_SOURCE_DIR}/bc7e.obj ${CMAKE_SOURCE_DIR}/bc7e_avx.obj ${CMAKE_SOURCE_DIR}/bc7e_avx2.obj ${CMAKE_SOURCE_DIR}/bc7e_sse2.obj ${CMAKE_SOURCE_DIR}/bc7e_sse4.obj)
+		add_library(${PROJECT_NAME} STATIC ${HEADER_FILES} ${SOURCE_FILES} ${CMAKE_SOURCE_DIR}/bc7e.obj ${CMAKE_SOURCE_DIR}/bc7e_avx.obj ${CMAKE_SOURCE_DIR}/bc7e_avx2.obj ${CMAKE_SOURCE_DIR}/bc7e_sse2.obj ${CMAKE_SOURCE_DIR}/bc7e_sse4.obj)
 	endif()
 endif()
 
 if (NOT MSVC)
-	target_link_libraries(bc7enc m)
+	target_link_libraries(${PROJECT_NAME} m)
 endif()
 
+target_include_directories(
+		"${PROJECT_NAME}" SYSTEM
+		PUBLIC "$<BUILD_INTERFACE:${INCLUDE_DIR}>"
+		"$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+		PRIVATE "$<BUILD_INTERFACE:${INCLUDE_DIR}>"
+		"$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
+add_executable(${PROJECT_NAME}_app src/test.cpp)
+target_link_libraries(${PROJECT_NAME}_app ${PROJECT_NAME})
+
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+
+install(TARGETS "${PROJECT_NAME}" EXPORT "${PROJECT_NAME}-targets")
+
+install(
+		EXPORT "${PROJECT_NAME}-targets"
+		NAMESPACE "bc7enc::"
+		DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+
+configure_file("${ROOT_DIR}/cmake/config.cmake.in"
+		"${PROJECT_NAME}Config.cmake" @ONLY)
+
+write_basic_package_version_file(
+		"${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+		COMPATIBILITY SameMajorVersion)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+		"${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+		DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+
+install(DIRECTORY "${INCLUDE_DIR}/bc7enc"
+		DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
