@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <time.h>
+#include <cstdint>
 #include <vector>
 #include <string>
 
